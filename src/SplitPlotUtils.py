@@ -19,6 +19,24 @@ import matplotlib.text as Text
 
 
 def cloneArtist(artist: Artist.Artist, axes = None) -> Artist.Artist:
+    '''
+    Duplicate a paintable element (artist)
+
+    Parameters
+    ----------
+    artist : Artist
+        An object of class 'matplotlib.artist.Artist' to duplicate.
+    axes : Axes or NoneType, optional
+        An object of class 'matplotlib.axes.Axes' to which 
+        the duplicated element is attached.
+        The default is None, i.e. the duplicated element is free.
+
+    Returns
+    -------
+    Artist
+        An object of class 'matplotlib.artist.Artist' holding 
+        the duplicated element.
+    '''
     if isinstance(artist, Collections.PathCollection):
         data = artist.get_offsets().data.T
         newArtist = axes.scatter(data[0], data[1])
@@ -46,8 +64,49 @@ def cloneArtist(artist: Artist.Artist, axes = None) -> Artist.Artist:
     return newArtist
 
 def splitAxes(figure: Figure, filename = '', fileFormat = 'png', 
-              xSubranges = [], ySubranges = [], 
-              xRatio = [], yRatio = []) -> Figure.Figure:
+              xSubranges = [], ySubranges = [], xRatio = [], yRatio = [],
+              xSpacing = 0.05, ySpacing = 0.05) -> Figure.Figure:
+    '''
+    Split the axes in a plot into subplots and create broken axes
+
+    Parameters
+    ----------
+    figure : Figure
+        An object of class 'matplotlib.Figure' to split.
+    filename : str, optional
+        A string indicating the target image file to which the plot is saved. 
+        The default is an empty string, i.e. no file will be generated.
+    fileFormat : str, optional
+        A string indicating the format of target image file.
+        The default is 'png'.
+    xSubranges : list, optional
+        A list of tuples of (float, float) indicating the limit of horizontal 
+        axis for each splitted plot.
+        The default is an empty list, i.e. no splitting on the horizontal axis.
+    ySubranges : list, optional
+        A list of tuples of (float, float) indicating the limit of vertical 
+        axis for each splitted plot.
+        The default is an empty list, i.e. no splitting on the vertical axis.
+    xRatio : list, optional
+        A list of float numbers between 0 and 1 indicating the relative width 
+        for each splitted plot.
+        The default is an empty list, i.e. no splitting on the horizontal axis.
+    yRatio : list, optional
+        A list of float numbers between 0 and 1 indicating the relative height 
+        for each splitted plot.
+        The default is an empty list, i.e. no splitting on the vertical axis.
+    xSpacing : float, optional
+        A float number indicating the horizontal spacing between splitted plot.
+        The default is 0.05.
+    ySpacing : float, optional
+        A float number indicating the vertical spacing between splitted plot.
+        The default is 0.05.
+
+    Returns
+    -------
+    Figure
+        An object of class 'matplotlib.Figure' holding the splitted plot.
+    '''
     if len(figure.axes) == 0:
         return figure
     
@@ -63,14 +122,18 @@ def splitAxes(figure: Figure, filename = '', fileFormat = 'png',
                  [(1 - sum(yRatio)) / (rowCount - len(yRatio))] * \
                  (rowCount - len(yRatio))
     
+    # Inverse the parameter order for the vertical axis
+    ySubranges = ySubranges[::-1]
+    yRatio = yRatio[::-1]
+    
     # Draw a new figure with the specified layout
     newFigure, _ = PyPlot.subplots(rowCount, columnCount, 
                                    gridspec_kw = {'width_ratios': xRatio, 
                                                   'height_ratios': yRatio}, 
                                    sharex = columnCount < 2, 
                                    sharey = rowCount < 2)
-    newFigure.subplots_adjust(hspace = 0.05 if columnCount else None, 
-                              wspace = 0.05 if rowCount else None)
+    newFigure.subplots_adjust(hspace = ySpacing if columnCount else None, 
+                              wspace = xSpacing if rowCount else None)
     
     # Add artists in the existing plot to each subplot in the new plot
     axes = figure.axes[0]
@@ -93,63 +156,37 @@ def splitAxes(figure: Figure, filename = '', fileFormat = 'png',
                 newAxes.set_ylim(axes.get_ylim())
             newAxes.set_xscale(axes.get_xscale())
             newAxes.set_yscale(axes.get_yscale())
-            newAxes.tick_params(bottom = (j == 0 or rowCount == 1), 
-                                labelbottom = (j == 0 or rowCount == 1), 
+            newAxes.tick_params(bottom = (j == rowCount - 1), 
+                                labelbottom = (j == rowCount - 1), 
                                 top = False, 
                                 left = (i == 0), 
                                 labelleft = (i == 0), 
                                 right = False)
-            newAxes.spines.bottom.set_visible(j == 0)
-            newAxes.spines.top.set_visible(j == rowCount - 1)
+            newAxes.spines.bottom.set_visible(j == rowCount - 1)
+            newAxes.spines.top.set_visible(j == 0)
             newAxes.spines.left.set_visible(i == 0)
             newAxes.spines.right.set_visible(i == columnCount - 1)
-            newAxes.xaxis.set_ticks_position('bottom' if j == 0  else 'none')
+            newAxes.xaxis.set_ticks_position('bottom' if j == rowCount - 1 
+                                             else 'none')
             newAxes.yaxis.set_ticks_position('left' if i == 0 else 'none')
     
-    # Add slanted lines on the horizontal axis
-    for i, ratio in enumerate(xRatio):
-        parameters = dict(marker=[(-1, -1), (1, 1)], 
-                          markersize = 12, linestyle = 'none', 
-                          color = 'black', mew = 1, clip_on = False)
-        for j in range(0, columnCount):
-            # Draw on the bottom axis
-            newAxes = newFigure.axes[j]
-            if j > 0:
-                newAxes.plot([0], [0], transform = newAxes.transAxes, 
-                             **parameters)
-            if j < columnCount - 1:
-                newAxes.plot([1], [0], transform = newAxes.transAxes, 
-                             **parameters)
-            
-            # Draw on the top axis
-            newAxes = newFigure.axes[(rowCount - 1) * i + j]
-            if j > 0:
-                newAxes.plot([0], [1], transform = newAxes.transAxes, 
-                             **parameters)
-            if j < columnCount - 1:
-                newAxes.plot([1], [1], transform = newAxes.transAxes, 
-                             **parameters)
-    
-    # Add slanted lines on the vertical axis
-    for i, ratio in enumerate(yRatio):
-        parameters = dict(marker=[(-1, 0.5), (1, 0.5)], linestyle="none", 
-                          color='black', mew = 1, clip_on = False)
+    # Add slanted lines on the axes
+    parameters = dict(marker=[(-1, -1), (1, 1)], 
+                      markersize = 12, linestyle = 'none', 
+                      color = 'black', mew = 1, clip_on = False)
+    for i in range(0, columnCount):
         for j in range(0, rowCount):
-            # Draw on the bottom axis
-            newAxes = newFigure.axes[j]
-            if j > 0:
+            newAxes = newFigure.axes[i + j * rowCount]
+            if (i > 0) ^ (j < rowCount - 1):
                 newAxes.plot([0], [0], transform = newAxes.transAxes, 
                              **parameters)
-            if j < rowCount - 1:
+            if (i < columnCount - 1) ^ (j < rowCount - 1):
                 newAxes.plot([1], [0], transform = newAxes.transAxes, 
                              **parameters)
-            
-            # Draw on the top axis
-            newAxes = newFigure.axes[(rowCount - 1) * i + j]
-            if j > 0:
+            if (i == 0) ^ (j == 0):
                 newAxes.plot([0], [1], transform = newAxes.transAxes, 
                              **parameters)
-            if j < rowCount - 1:
+            if (i < columnCount - 1) ^ (j > 0):
                 newAxes.plot([1], [1], transform = newAxes.transAxes, 
                              **parameters)
     
