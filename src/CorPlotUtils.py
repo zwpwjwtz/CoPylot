@@ -245,3 +245,143 @@ def scatterCurve(x: list, y: list, curve: object, filename = '',
         figure.savefig(filename, format = fileFormat)
     
     return figure
+
+def curve(function: object, filename = '', 
+          curveColor = None, curveStyle = '-', curveLabel = None, 
+          xlim = None, ylim = None, samplingDensity = 3, flipXY = False, 
+          xLogScale = False, yLogScale = False, 
+          xLabel = None, yLabel = None, dataLabel = None, 
+          legend = False, legendTitle = None, legendPosition = 'right', 
+          append = None, fileFormat = 'png', **kwargs) -> object:
+    '''
+    Draw a line plot of discrete data points sampled from a curve.
+    
+    Parameters
+    ----------
+    function: object
+        A callable object used to draw the additional curve. It should accept 
+        one input (an 'x' value) and give one ouput (a 'y' value).
+    filename : str, optional
+        A string indicating the target image file to which the plot is saved. 
+        The default is an empty string, i.e. no file will be generated.int.
+    samplingDensity : int or float, optional
+        A numeric value indicating the number of sample points used to 
+        interpolate the specified curve.
+    curveColor : str or NoneType, optional
+        A string corresponding to the color of the additional curve. 
+        The default is None, i.e. the default color ('1F77B4') will be used.
+    curveStyle : str or NoneType, optional
+        A string indicatign the style of the additional curve. 
+        The default is '-', i.e. drawing solid lines.
+    curveLabel : str or NoneType, optional
+        A string used to mark the curve in the legend when **legend** == True, 
+        or None if no label for the curve shall be shown.
+        The default is None.
+    fileFormat : str, optional
+        A string indicating the format of target image file.
+        The default is 'png'.
+    
+    **kwargs : dict
+        Additional arguments passed to the function **scatter**.
+    
+    Returns
+    -------
+    object
+        An object of type 'matplotlib.figure.Figure' holding the scatter plot.
+    '''
+    # Get an existing plot
+    update = False
+    if type(append) == Figure.Figure:
+        figure = append
+        if len(append.get_axes()) > 0:
+            axes = figure.get_axes()[0]
+            update = True
+        else:
+            axes = figure.subplots()
+    else:
+        figure, axes = PyPlot.subplots()
+    
+    # Set the axis scale
+    if not update:
+        axes.set_xscale('log' if xLogScale else 'linear')
+        axes.set_yscale('log' if yLogScale else 'linear')
+    
+    # Make a (smooth) line plot
+    if xlim is None:
+        limits = axes.get_ylim() if flipXY else axes.get_xlim()
+    else:
+        limits = xlim
+    xRange = (min(X for X in limits if X > 0) 
+              if xLogScale and not flipXY or yLogScale and flipXY 
+              else min(limits), 
+              max(limits))
+    if xLogScale:
+        xDense = numpy.logspace(numpy.log(xRange[0]), numpy.log(xRange[1]), 
+                                base = numpy.e, num = samplingDensity)
+    else:
+        xDense = numpy.linspace(xRange[0], xRange[1], num = samplingDensity)
+    yDense = [function(X) for X in xDense]
+    axes.plot(yDense if flipXY else xDense, xDense if flipXY else yDense, 
+              label = curveLabel, color = curveColor, linestyle = curveStyle) 
+    
+    # Adjust the plot range
+    if xlim != None:
+        axes.set_xlim(xlim)
+    if ylim != None:
+        axes.set_ylim(ylim)
+    
+    # Set the axis label
+    axes.set_xlabel(xLabel)
+    axes.set_ylabel(yLabel)
+    
+    # Set the legend
+    if legend:
+        axes.legend(loc = legendPosition, title = legendTitle)
+    
+    # Save the plot to a file if needed
+    if len(filename) > 0:
+        figure.savefig(filename, format = fileFormat)
+    
+    return figure
+
+def curveVLine(function: object, x0: list, 
+               vlineColors = None, vlineStyles = None, **kwargs) -> object:
+    """
+    Draw a line plot plus several vertical lines.
+    
+    Parameters
+    ----------
+    curve: object
+        A callable object used to draw the additional curve. It should accept 
+        one input (an 'x' value) and give one ouput (a 'y' value).
+    x0 : list
+        A list of numeric values representing the horizontal coordinate 
+        of vertical lines in the additional line plot.
+    vlineColors: list or NoneType, optional
+        A list of strings, corresponding to the color of each additional lines.
+        The default is None, i.e. the default color ('1F77B4') will be used.
+    vlineStyles: str, optional
+        A list of strings indicating the style of each verticle line.
+        The default is None, i.e. the default style ('-') will be used.
+    **kwargs : dict
+        Additional arguments passed to function **contour2D**.
+
+    Returns
+    -------
+    object
+        An object of class 'matplotlib.Figure' holding the contour plot 
+        and the line plot.
+    """
+    figure = curve(function, **kwargs)
+    
+    if type(x0) != list:
+        x0 = [x0]
+    if type(vlineColors) != list:
+        vlineColors = [vlineColors] * len(x0)
+    if type(vlineStyles) != list:
+        vlineStyles = [vlineStyles] * len(x0)
+    for X, color, style in zip(x0, vlineColors, vlineStyles):
+        figure.axes[0].axvline(X, color = color, linestyle = style)
+    if 'filename' in kwargs and len(kwargs['filename']) > 0:
+        figure.savefig(kwargs['filename'], format = 'png')
+    return figure
