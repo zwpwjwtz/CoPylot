@@ -98,9 +98,13 @@ def heatmap2D(Z: list, X = None, Y = None, filename = '',
     colorbar = figure.colorbar(heatmap, shrink = 0.75)
     
     if X is not None:
-        axes.set_xticks(range(0, len(X)), labels = X, rotation = rotateLabelX)
+        axes.set_xticks([i for i in range(0, len(X)) if X[i] is not None], 
+                        labels = [x for x in X if x is not None], 
+                        rotation = rotateLabelX)
     if Y is not None:
-        axes.set_yticks(range(0, len(Y)), labels = Y, rotation = rotateLabelY)
+        axes.set_yticks([i for i in range(0, len(Y)) if Y[i] is not None], 
+                        labels = [y for y in Y if y is not None], 
+                        rotation = rotateLabelY)
     if inverseX:
         axes.invert_xaxis()
     if inverseY:
